@@ -486,7 +486,7 @@ The API provides detailed error messages for various validation failures:
 
 ## Testing
 
-The project includes comprehensive tests for both National ID validation and API key management:
+The project includes comprehensive tests for API key management:
 
 ### Running Tests
 
@@ -494,8 +494,6 @@ The project includes comprehensive tests for both National ID validation and API
 # Run all tests
 python manage.py test
 
-# Run specific app tests
-python manage.py test national_id
 python manage.py test api_keys
 
 # Run with verbose output

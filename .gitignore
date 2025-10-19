@@ -40,3 +40,5 @@ env/
 *~
 
 .env
+
+db.sqlite3
