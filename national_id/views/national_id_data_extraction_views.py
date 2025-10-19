@@ -3,10 +3,12 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from api_keys.decorators.api_key_tracker import track_api_key_usage
+from core.decorators.rate_limiter import rate_limit_by_api_key
 from national_id.serializers.national_id_serializer import NationalIdSerializer
 from national_id.services.national_id_service import NationalIdService
 
 class NationalIdDataExtractionViews(APIView):
+    @rate_limit_by_api_key(requests_per_minute=2)
     @track_api_key_usage("extract_data_from_national_id")
     def post(self, request):
         serializer = NationalIdSerializer(data=request.data)

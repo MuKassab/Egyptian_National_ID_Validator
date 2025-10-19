@@ -23,6 +23,14 @@ A Django REST API service for validating and extracting data from Egyptian Natio
   - Endpoint breakdown
   - Last usage timestamp
 
+### Rate Limiting
+
+- **API Key Based Rate Limiting**: Rate limiting applied only when API key is present
+- **Configurable Limits**: Default 2 requests per minute per API key
+- **Sliding Window**: 60-second sliding window for accurate rate limiting
+- **Redis Backend**: Uses Redis for fast and scalable rate limiting
+- **Automatic Cleanup**: Rate limit data automatically expires after 60 seconds
+
 ### Technical Features
 
 - **RESTful API**: Clean REST API endpoints for easy integration
@@ -107,6 +115,16 @@ Extracts personal information from a valid National ID.
 {
   "is_valid_national_id": false,
   "reason": "Invalid governorate code"
+}
+```
+
+**Rate Limit Exceeded Response:**
+
+```json
+{
+  "error": "Rate limit exceeded",
+  "message": "Maximum 2 requests per minute allowed",
+  "retry_after": 45
 }
 ```
 
@@ -205,7 +223,7 @@ Retrieves detailed usage statistics for an API key.
 - Python 3.8+
 - pip
 - virtualenv (recommended)
-- Docker (for PostgreSQL database)
+- Docker (for PostgreSQL database and Redis)
 - PostgreSQL client (optional, for direct database access)
 
 ### Database Setup
@@ -221,16 +239,32 @@ Retrieves detailed usage statistics for an API key.
      -d postgres:16
    ```
 
-2. **Create environment file:**
+2. **Start Redis using Docker:**
+
+   ```bash
+   docker run -d \
+     --name redis \
+     -p 6379:6379 \
+     redis:latest
+   ```
+
+3. **Create environment file:**
 
    Create a `.env` file in the project root with the following content:
 
    ```env
+   # Database Configuration
    DB_NAME=api_keys_db
    DB_USER=admin
    DB_PASSWORD=secret123
    DB_HOST=localhost
    DB_PORT=5432
+
+   # Redis Configuration
+   REDIS_HOST=localhost
+   REDIS_PORT=6379
+   REDIS_DB=0
+   REDIS_PASSWORD=
    ```
 
 ### Setup
@@ -279,6 +313,14 @@ Egyptian_National_ID_Validator/
 │   ├── wsgi.py
 │   ├── asgi.py
 │   └── exceptions.py                        # Custom exception handler
+├── core/                                    # Core utilities app
+│   ├── helpers/
+│   │   └── redis_client.py                  # Redis client configuration
+│   ├── decorators/
+│   │   └── rate_limiter.py                 # Rate limiting decorator
+│   ├── models.py
+│   ├── admin.py
+│   └── apps.py
 ├── national_id/                             # National ID validation app
 │   ├── constants/
 │   │   └── constants.py                     # Governorate codes mapping
@@ -301,8 +343,7 @@ Egyptian_National_ID_Validator/
 │   ├── decorators/
 │   │   └── api_key_tracker.py              # Usage tracking decorator
 │   ├── helpers/
-│   │   ├── key_generator.py                # API key generation utilities
-│   │   └── rate_limiter.py                 # Rate limiting utilities
+│   │   └── key_generator.py                # API key generation utilities
 │   ├── serializers/
 │   │   └── api_key_serializer.py           # API key validation
 │   ├── services/
@@ -318,6 +359,46 @@ Egyptian_National_ID_Validator/
 ├── manage.py
 ├── requirements.txt                         # Python dependencies
 └── .env                                     # Environment variables
+```
+
+## Rate Limiting
+
+The API implements rate limiting to prevent abuse and ensure fair usage:
+
+### Features
+
+- **API Key Based**: Rate limiting only applies when an API key is present in the request
+- **Per-Key Limits**: Each API key has its own rate limit counter
+- **Sliding Window**: Uses a 60-second sliding window for accurate rate limiting
+- **Redis Backend**: Uses Redis for fast and scalable rate limiting storage
+- **Configurable**: Rate limits can be configured per endpoint (default: 2 requests/minute)
+
+### Rate Limit Response
+
+When rate limit is exceeded, the API returns:
+
+```json
+{
+  "error": "Rate limit exceeded",
+  "message": "Maximum 2 requests per minute allowed",
+  "retry_after": 45
+}
+```
+
+- **Status Code**: 429 (Too Many Requests)
+- **retry_after**: Seconds until the rate limit resets
+
+### Configuration
+
+Rate limiting is configured using the `@rate_limit_by_api_key` decorator:
+
+```python
+from core.decorators.rate_limiter import rate_limit_by_api_key
+
+@rate_limit_by_api_key(requests_per_minute=2)
+def my_view(request):
+    # Your view logic here
+    pass
 ```
 
 ## API Key Security
