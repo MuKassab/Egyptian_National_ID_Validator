@@ -3,11 +3,22 @@
 import os
 import sys
 
+from django.db import connections
+from django.db.utils import OperationalError
+
+def check_db_connection():
+    db_conn = connections['default']
+    try:
+        db_conn.cursor()
+        print("Database connection OK")
+    except OperationalError:
+        print("Database connection failed")
 
 def main():
     """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Egyptian_National_ID_Validator.settings')
     try:
+        check_db_connection()
         from django.core.management import execute_from_command_line
     except ImportError as exc:
         raise ImportError(

@@ -1,17 +1,35 @@
 # Egyptian National ID Validator
 
-A Django REST API service for validating and extracting data from Egyptian National ID numbers. This project provides comprehensive validation and data extraction capabilities for Egyptian National IDs, including birth date, gender, governorate, and age calculation.
+A Django REST API service for validating and extracting data from Egyptian National ID numbers. This project provides comprehensive validation and data extraction capabilities for Egyptian National IDs, including birth date, gender, governorate, and age calculation. The service also includes a complete API key management system for secure access control.
 
 ## Features
+
+### National ID Validation
 
 - **National ID Validation**: Validates Egyptian National ID numbers using checksum algorithm
 - **Data Extraction**: Extracts personal information from valid National IDs including:
   - Birth date and age calculation
   - Gender identification
   - Birth governorate
+
+### API Key Management
+
+- **Secure API Key Generation**: Generate cryptographically secure 64-character API keys
+- **API Key Verification**: Verify API keys with secure hashing (SHA-512)
+- **Usage Tracking**: Track API key usage with detailed analytics
+- **Usage Statistics**: Get comprehensive usage statistics including:
+  - Total usage count
+  - Recent usage (24-hour window)
+  - Endpoint breakdown
+  - Last usage timestamp
+
+### Technical Features
+
 - **RESTful API**: Clean REST API endpoints for easy integration
 - **Error Handling**: Comprehensive error handling with detailed validation messages
 - **Django Integration**: Built with Django and Django REST Framework
+- **PostgreSQL Support**: Production-ready database configuration
+- **Security**: Secure API key storage with hashing and tracking
 
 ## National ID Format
 
@@ -92,6 +110,94 @@ Extracts personal information from a valid National ID.
 }
 ```
 
+## API Key Management Endpoints
+
+### 1. Generate API Key
+
+**POST** `/api/api-keys/generate`
+
+Generates a new 64-character API key for accessing the service.
+
+**Request Body:**
+
+```json
+{}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "api_key": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2",
+  "message": "API key generated successfully"
+}
+```
+
+### 2. Verify API Key
+
+**POST** `/api/api-keys/verify`
+
+Verifies an API key and returns its status.
+
+**Request Body:**
+
+```json
+{
+  "api_key": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2"
+}
+```
+
+**Response:**
+
+```json
+{
+  "valid": true,
+  "id": 1,
+  "last_usage": "2024-01-15T10:30:00Z"
+}
+```
+
+**Error Response:**
+
+```json
+{
+  "valid": false,
+  "error": "Invalid API key"
+}
+```
+
+### 3. Get Usage Statistics
+
+**POST** `/api/api-keys/usage-stats`
+
+Retrieves detailed usage statistics for an API key.
+
+**Request Body:**
+
+```json
+{
+  "api_key": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "api_key_id": 1,
+  "total_usage": 150,
+  "recent_usage_24h": 25,
+  "endpoint_breakdown": {
+    "/api/national-id/validate": 80,
+    "/api/national-id/extract-data": 70
+  },
+  "last_usage": "2024-01-15T10:30:00Z",
+  "created_at": "2024-01-10T08:00:00Z"
+}
+```
+
 ## Installation
 
 ### Prerequisites
@@ -99,6 +205,33 @@ Extracts personal information from a valid National ID.
 - Python 3.8+
 - pip
 - virtualenv (recommended)
+- Docker (for PostgreSQL database)
+- PostgreSQL client (optional, for direct database access)
+
+### Database Setup
+
+1. **Start PostgreSQL using Docker:**
+
+   ```bash
+   docker run --name my_postgres \
+     -e POSTGRES_USER=admin \
+     -e POSTGRES_PASSWORD=secret123 \
+     -e POSTGRES_DB=api_keys_db \
+     -p 5432:5432 \
+     -d postgres:16
+   ```
+
+2. **Create environment file:**
+
+   Create a `.env` file in the project root with the following content:
+
+   ```env
+   DB_NAME=api_keys_db
+   DB_USER=admin
+   DB_PASSWORD=secret123
+   DB_HOST=localhost
+   DB_PORT=5432
+   ```
 
 ### Setup
 
@@ -146,7 +279,7 @@ Egyptian_National_ID_Validator/
 │   ├── wsgi.py
 │   ├── asgi.py
 │   └── exceptions.py                        # Custom exception handler
-├── national_id/                             # Main application
+├── national_id/                             # National ID validation app
 │   ├── constants/
 │   │   └── constants.py                     # Governorate codes mapping
 │   ├── helpers/
@@ -162,8 +295,50 @@ Egyptian_National_ID_Validator/
 │   ├── models.py
 │   ├── urls.py                              # App URL configuration
 │   └── admin.py
+├── api_keys/                                # API key management app
+│   ├── constants/
+│   │   └── constants.py                     # API key constants
+│   ├── decorators/
+│   │   └── api_key_tracker.py              # Usage tracking decorator
+│   ├── helpers/
+│   │   ├── key_generator.py                # API key generation utilities
+│   │   └── rate_limiter.py                 # Rate limiting utilities
+│   ├── serializers/
+│   │   └── api_key_serializer.py           # API key validation
+│   ├── services/
+│   │   └── api_key_service.py              # API key business logic
+│   ├── views/
+│   │   ├── api_key_views.py                # API key endpoints
+│   │   └── api_key_management_views.py     # Management endpoints
+│   ├── tests/
+│   │   └── api_creation_tests.py           # API key tests
+│   ├── models.py                            # API key models
+│   ├── urls.py                              # App URL configuration
+│   └── admin.py
 ├── manage.py
-└── db.sqlite3                               # SQLite database
+├── requirements.txt                         # Python dependencies
+└── .env                                     # Environment variables
+```
+
+## API Key Security
+
+The API key system implements several security measures:
+
+- **Cryptographically Secure Generation**: API keys are generated using Python's `secrets` module
+- **Secure Storage**: API keys are never stored in plain text; only SHA-512 hashes are stored
+- **64-Character Length**: All API keys are exactly 64 alphanumeric characters
+- **Usage Tracking**: All API key usage is logged with timestamps and endpoint information
+- **Verification**: API keys are verified against stored hashes for authentication
+
+### Using API Keys
+
+To use an API key with the service, include it in the request headers:
+
+```bash
+curl -H "X-API-Key: your_api_key_here" \
+     -H "Content-Type: application/json" \
+     -X POST http://127.0.0.1:8000/api/national-id/validate \
+     -d '{"national_id": "29512301234567"}'
 ```
 
 ## Validation Rules
@@ -189,9 +364,25 @@ The validator performs the following checks:
 4. **Checksum Validation:**
    - Uses a weighted checksum algorithm to verify the last digit
 
+## Database Models
+
+### ApiKey Model
+
+- `key_hash`: SHA-512 hash of the API key (unique)
+- `last_usage`: Timestamp of last API key usage
+- `is_active`: Boolean flag for API key status
+
+### ApiKeyUsage Model
+
+- `api_key`: Foreign key to ApiKey model
+- `endpoint`: The endpoint that was accessed
+- `time_of_usage`: Timestamp when the API key was used
+
 ## Error Handling
 
 The API provides detailed error messages for various validation failures:
+
+### National ID Validation Errors
 
 - `"National ID must contain digits only."`
 - `"National ID must be exactly 14 digits long."`
@@ -201,3 +392,31 @@ The API provides detailed error messages for various validation failures:
 - `"Invalid birth date"`
 - `"Invalid check digit"`
 - `"Unexpected error"`
+
+### API Key Errors
+
+- `"API key is required"`
+- `"API key must be exactly 64 characters long"`
+- `"API key must contain only alphanumeric characters"`
+- `"Invalid API key"`
+- `"API key not found"`
+- `"Failed to generate API key"`
+- `"Failed to track usage"`
+
+## Testing
+
+The project includes comprehensive tests for both National ID validation and API key management:
+
+### Running Tests
+
+```bash
+# Run all tests
+python manage.py test
+
+# Run specific app tests
+python manage.py test national_id
+python manage.py test api_keys
+
+# Run with verbose output
+python manage.py test --verbosity=2
+```
